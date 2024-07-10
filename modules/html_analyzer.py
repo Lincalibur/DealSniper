@@ -1,37 +1,50 @@
 # modules/html_analyzer.py
 
+import requests
 from bs4 import BeautifulSoup
 
-def extract_items_and_prices(html_content):
+def fetch_html(url):
     """
-    Extracts items and their corresponding prices from HTML content.
+    Fetches HTML content from the specified URL.
 
     Args:
-    - html_content (str): HTML content of the webpage.
+    - url (str): URL to fetch HTML content from.
 
     Returns:
-    - items (list): List of item names.
-    - prices (list): List of corresponding prices.
+    - str: HTML content of the webpage.
     """
-    items = []
-    prices = []
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        return response.text
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching HTML from {url}: {e}")
+        return None
 
-    soup = BeautifulSoup(html_content, 'html.parser')
+def analyze_html(urls):
+    """
+    Analyzes HTML content from the specified URLs to identify potential item and price elements.
 
-    # Implement logic to extract items and prices based on HTML structure
-    # Example code:
-    product_elements = soup.select('.product-item')  # Example selector
+    Args:
+    - urls (list): List of URLs to analyze.
 
-    for product in product_elements:
-        item_name_elem = product.select_one('.product-name a')
-        price_elem = product.select_one('.price')
+    Returns:
+    - dict: Dictionary mapping each URL to a tuple of identified item elements (HTML) and price elements (HTML).
+    """
+    results = {}
 
-        if item_name_elem and price_elem:
-            item_name = item_name_elem.text.strip()
-            price = price_elem.text.strip()
-            items.append(item_name)
-            prices.append(float(price.replace('R', '').replace(',', '')))
+    for url in urls:
+        html_content = fetch_html(url)
+        if not html_content:
+            results[url] = ([], [])
+            continue
 
-    return items, prices
+        soup = BeautifulSoup(html_content, 'html.parser')
 
-# Add more functions as needed for specific HTML analysis tasks
+        # Example selectors to find item and price elements
+        item_elements = soup.select('.product-name')  # Update with actual item selectors
+        price_elements = soup.select('.price')  # Update with actual price selectors
+
+        results[url] = (item_elements, price_elements)
+
+    return results

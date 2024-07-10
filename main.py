@@ -1,54 +1,48 @@
 # main.py
 
-import requests
-import pandas as pd
-import time
-from modules.html_analyzer import extract_items_and_prices
-from config import WEBSITES
+import config
+from modules import html_analyzer
 
-def log(message):
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {message}")
+def confirm_elements(url, item_elements, price_elements):
+    """
+    Displays identified item and price elements and asks for confirmation from the user.
 
-def scrape_website(url, site_name):
-    items = []
-    prices = []
-    page = 1
-    log(f"Starting to scrape {site_name}")
+    Args:
+    - url (str): URL being analyzed.
+    - item_elements (list): List of identified item elements (HTML).
+    - price_elements (list): List of identified price elements (HTML).
+
+    Returns:
+    - bool: True if confirmed, False otherwise.
+    """
+    print(f"\nAnalyzing {url}:")
+    print("Found potential item elements:")
+    for i, item in enumerate(item_elements, start=1):
+        print(f"{i}. {item.text.strip()}")
+
+    print("\nFound potential price elements:")
+    for i, price in enumerate(price_elements, start=1):
+        print(f"{i}. {price.text.strip()}")
 
     while True:
-        url_with_page = f"{url}{page}"
-        log(f"Fetching URL: {url_with_page}")
-        response = requests.get(url_with_page)
-        if response.status_code != 200:
-            log(f"Failed to fetch {url_with_page}. Status code: {response.status_code}")
-            break
+        choice = input("\nDo you confirm these elements? (yes/no): ").strip().lower()
+        if choice == 'yes':
+            return True
+        elif choice == 'no':
+            return False
+        else:
+            print("Invalid choice. Please enter 'yes' or 'no'.")
 
-        items_found, prices_found = extract_items_and_prices(response.text)
-        if not items_found or not prices_found:
-            log(f"No items or prices found on {site_name} at URL: {url_with_page}")
-            break
+if __name__ == "__main__":
+    urls = [site['url'] for site in config.SITES]  # Read URLs from config.py
 
-        items.extend(items_found)
-        prices.extend(prices_found)
-        log(f"Found {len(items_found)} items on {site_name} page {page}")
+    results = html_analyzer.analyze_html(urls)
 
-        page += 1
+    for url, (item_elements, price_elements) in results.items():
+        if confirm_elements(url, item_elements, price_elements):
+            print("Confirmed. Proceeding with scraping...")
+            # Add logic to scrape items and prices from websites using confirmed elements
+        else:
+            print("Confirmation declined. Skipping this site.")
 
-    log(f"Finished scraping {site_name}. Found {len(items)} items in total.")
-    return items, prices
-
-# Start scraping
-start_time = time.time()
-data = []
-
-for site in WEBSITES:
-    site_name = site['name']
-    site_url = site['url']
-    items, prices = scrape_website(site_url, site_name)
-    data.append((items, prices))
-
-end_time = time.time()
-log(f"Scraping completed in {end_time - start_time:.2f} seconds")
-
-# Further processing (comparison, saving to Excel) can be added here
-
+    print("\nAll sites analyzed.")
