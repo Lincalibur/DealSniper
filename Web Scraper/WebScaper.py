@@ -34,7 +34,6 @@ def scrape_site(base_url):
                 price = price_elem.text.strip()
                 items.append(item_name)
                 prices.append(float(price.replace('R', '').replace(',', '')))
-                # log(f"Found item: {item_name} with price: {price} on {site_name}")
             else:
                 if not item_name_elem:
                     log(f"Missing item name on {site_name} at URL: {url}")
@@ -45,63 +44,36 @@ def scrape_site(base_url):
 
         log(f"Found {len(product_elements)} products on {site_name} page {page}")
         page += 1
+        time.sleep(1)  # Add a short delay to be kind to the server
 
     log(f"Finished scraping {site_name}. Found total of {len(items)} items.")
     return items, prices
 
-# Function to compare prices and find best prices
-def find_best_prices(items, *price_lists):
-    combined_data = {}
+# Main function to scrape Wootware
+def main():
+    # URL for Wootware
+    wootware_url = 'https://www.wootware.co.za/computer-hardware?p='
 
-    for site_index, prices in enumerate(price_lists, start=1):
-        for item, price in zip(items, prices):
-            if item not in combined_data:
-                combined_data[item] = {'Price': price, 'Store': f'Site {site_index}'}
-            else:
-                if price < combined_data[item]['Price']:
-                    combined_data[item]['Price'] = price
-                    combined_data[item]['Store'] = f'Site {site_index}'
+    # Start scraping Wootware
+    start_time = time.time()
+    items, prices = scrape_site(wootware_url)
+    end_time = time.time()
 
-    return combined_data
+    # Output counts
+    log(f"Count of items found on Wootware: {len(items)} items")
 
-# List of site URLs
-sites = [
-    'https://www.wootware.co.za/computer-hardware?p=',
-    'https://www.incredible.co.za/products/gaming/components?p=',
-    'https://www.evetech.co.za/search/components?p='
-]
+    # Convert data to DataFrame
+    df = pd.DataFrame({
+        'Item': items,
+        'Price': prices
+    })
 
-# Start scraping
-start_time = time.time()
-data = []
+    # Save to Excel
+    excel_file = 'wootware_prices.xlsx'
+    df.to_excel(excel_file, index=False)
 
-for url in sites:
-    items, prices = scrape_site(url)
-    data.append((items, prices))
+    log(f"Prices from Wootware have been saved to {excel_file}")
+    log(f"Scraping completed in {end_time - start_time:.2f} seconds")
 
-end_time = time.time()
-log(f"Scraping completed in {end_time - start_time:.2f} seconds")
-
-# Output counts
-for url, (items, prices) in zip(sites, data):
-    site_name = urlparse(url).hostname
-    log(f"Count of items found on {site_name}: {len(items)} items")
-
-# Unpack data for comparison
-item_lists, price_lists = zip(*data)
-
-# Compare prices and find best prices
-combined_data = find_best_prices(item_lists[0], *price_lists)
-
-# Convert combined data to DataFrame
-df = pd.DataFrame([
-    [item, data['Price'], data['Store']]
-    for item, data in combined_data.items()
-], columns=['Item', 'Price', 'Store'])
-
-# Save to Excel
-excel_file = 'best_prices.xlsx'
-with pd.ExcelWriter(excel_file) as writer:
-    df.to_excel(writer, sheet_name='Best Prices', index=False)
-
-log(f"Best prices have been saved to {excel_file}")
+if __name__ == "__main__":
+    main()
